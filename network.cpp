@@ -1,17 +1,12 @@
 #include "network.h"
 using namespace NeuralNetwork;
-
-// This code is almost an exact translation of the python code
+// This code is a translation of the python code from http://neuralnetworksanddeeplearning.com/
 // The difference is with random number generation and thus with weight / bias initialization and array shuffling
 // 
 // I've had issues while working with the eigen library due to aliasing.
 // Aliasing is when an eigen variable x appears on both the right and left hand side of an assignment.
 // More information on aliasing can be found on the eigen website.
 // I would prefer not to have this problem, however, eigen is nice to work with and it seems fast.
-//
-// I claim that it is easier to learn to work with eigen's one quirk (aliasing) than it is to attempt to learn
-// all the non obvious syntax used in python
-
 void Network::log_parameters()
 {
 	for (int i = 0+1; i < number_of_layers-1; ++i)
