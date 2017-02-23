@@ -41,9 +41,9 @@ void load_data(Data& train_data, Data& test_data, Data& validation_data)
 	const char* test_img_file = "t10k-images-idx3-ubyte.gz";
 	const char* test_lbl_file = "t10k-labels-idx1-ubyte.gz";
 
-	// train data gets 50000 images from the first img file
-	// val data gets 10000 images form the first img file
-	// test data gets all images from the second img file
+	// train_data gets 50000 images from the first img file
+	// validation_data gets 10000 images from the first img file
+	// test_data gets all images from the second img file
 
 	vector<unsigned char> file;
 	auto read_file = [&](const char* path, int offset) {

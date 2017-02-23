@@ -1,21 +1,9 @@
 #include "network.h"
 using namespace NeuralNetwork;
 
-// I've had some issues while working with the eigen library due to aliasing.
-// Aliasing is occurs when an eigen variable appears on both the right and the left hand side of an assignment.
-// More information on aliasing can be found on the eigen website.
-// I would prefer not to have this problem, however, eigen is nice to work with and it seems fast.
-void Network::log_parameters()
-{
-	for (int i = 0+1; i < number_of_layers-1; ++i)
-		cout << "layer " << i+1 << " biases : " << endl << biases[i] << endl << endl;
-	for (int i = 0+1; i < number_of_layers-1; ++i)
-		cout << "layer " << i+1 << " weights : " << endl << weights[i] << endl << endl;
-}
-
 Network::Network(const VectorXi & layer_sizes)
 {
-	std::default_random_engine gen(134532);
+	std::default_random_engine gen(13452);
 	std::normal_distribution<double> dist(0.,1.);
 
 	number_of_layers = layer_sizes.size();
@@ -24,12 +12,12 @@ Network::Network(const VectorXi & layer_sizes)
 		weights.push_back(MatrixXd::Zero(layer_sizes(i),layer_sizes(i-1)));
 		biases.push_back(VectorXd::Zero(layer_sizes(i)));
 	}
-	for (int i = 0; i < number_of_layers; ++i)
+	for (int i = 0; i < number_of_layers-1; ++i)
 	{
 		for (int j = 0; j < weights[i].rows(); ++j)
 			for (int k = 0; k < weights[i].cols(); ++k)
 				weights[i](j,k) = dist(gen);
-		for (int j = 0; j < biases[i].size(); ++j)
+		for (int j = 0; j < biases[i].rows(); ++j)
 			biases[i](j) = dist(gen);
 	}
 }
@@ -128,11 +116,6 @@ void Network::backprop(const VectorXd & x, int y, vector<MatrixXd>& nabla_w, vec
 	// 	nabla_w[nabla_w.size() -l] += delta * activations[activations.size() -l-1].transpose();
 	// 	nabla_b[nabla_b.size() -l] += delta;
 	// }
-	// // for (int i = 0; i < number_of_layers - 1; ++i)
-	// // {
-	// // 	cout << "layer " << i + 1 << " grad b" << endl << nabla_b[i] << endl << endl;
-	// // 	cout << "layer " << i + 1 << " grad w" << endl << nabla_w[i] << endl << endl;
-	// // }
 }
 
 double Network::evaluate(const Data & test_data)

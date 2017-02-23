@@ -43,14 +43,4 @@ int main()
 		cout << "Accuracy Test Failed" << endl;
 	else
 		cout << "Accuracy Test Passed" << endl;
-
-	// Test code
-	// highlevel?
-	//     load known image into memory
-	//     make train example from it
-	//     test net can learn this
-	// lowlevel?
-	//     conceive of some simple train example
-	//     test expected (analytically obtained?) output for backprop
-	//
 }

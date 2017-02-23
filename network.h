@@ -36,7 +36,5 @@ namespace NeuralNetwork
 			VectorXd sigmoid(const VectorXd & z);
 			VectorXd Dsigmoid(const VectorXd & z);
 			int argmax(const VectorXd & v);
-
-			void log_parameters();
 	};
 }
