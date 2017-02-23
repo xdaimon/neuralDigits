@@ -1,17 +1,10 @@
 #include "network.h"
 using namespace NeuralNetwork;
 
-// This code is almost an exact translation of the python code
-// The difference is with random number generation and thus with weight / bias initialization and array shuffling
-// 
-// I've had issues while working with the eigen library due to aliasing.
-// Aliasing is when an eigen variable x appears on both the right and left hand side of an assignment.
+// I've had some issues while working with the eigen library due to aliasing.
+// Aliasing is occurs when an eigen variable appears on both the right and the left hand side of an assignment.
 // More information on aliasing can be found on the eigen website.
 // I would prefer not to have this problem, however, eigen is nice to work with and it seems fast.
-//
-// I claim that it is easier to learn to work with eigen's one quirk (aliasing) than it is to attempt to learn
-// all the non obvious syntax used in python
-
 void Network::log_parameters()
 {
 	for (int i = 0+1; i < number_of_layers-1; ++i)
@@ -22,44 +15,23 @@ void Network::log_parameters()
 
 Network::Network(const VectorXi & layer_sizes)
 {
+	std::default_random_engine gen(134532);
+	std::normal_distribution<double> dist(0.,1.);
+
 	number_of_layers = layer_sizes.size();
 	for (int i = 1; i < number_of_layers; ++i)
 	{
-		weights.push_back(2.*MatrixXd::Random(layer_sizes(i), layer_sizes(i-1)));
-		biases.push_back(2.*MatrixXd::Random(layer_sizes(i), 1));
-		// weights.push_back(MatrixXd::Zero(layer_sizes(i),layer_sizes(i-1)));
-		// biases.push_back(VectorXd::Zero(layer_sizes(i)));
+		weights.push_back(MatrixXd::Zero(layer_sizes(i),layer_sizes(i-1)));
+		biases.push_back(VectorXd::Zero(layer_sizes(i)));
 	}
-
-	// Load from python data
-	// for (int i = 0; i < weights[0].rows(); ++i)
-	// {
-	// 	for (int j = 0; j < weights[0].cols(); ++j)
-	// 	{
-	// 		weights[0](i,j) = w1[i * weights[0].cols() + j];
-	// 	}
-	// }
-	// for (int i = 0; i < weights[1].rows(); ++i)
-	// {
-	// 	for (int j = 0; j < weights[1].cols(); ++j)
-	// 	{
-	// 		weights[1](i,j) = w2[i * weights[1].cols() + j];
-	// 	}
-	// }
-	// for (int i = 0; i < biases[0].rows(); ++i)
-	// {
-	// 	for (int j = 0; j < biases[0].cols(); ++j)
-	// 	{
-	// 		biases[0](i,j) = b1[i * biases[0].cols() + j];
-	// 	}
-	// }
-	// for (int i = 0; i < biases[1].rows(); ++i)
-	// {
-	// 	for (int j = 0; j < biases[1].cols(); ++j)
-	// 	{
-	// 		biases[1](i,j) = b2[i * biases[1].cols() + j];
-	// 	}
-	// }
+	for (int i = 0; i < number_of_layers; ++i)
+	{
+		for (int j = 0; j < weights[i].rows(); ++j)
+			for (int k = 0; k < weights[i].cols(); ++k)
+				weights[i](j,k) = dist(gen);
+		for (int j = 0; j < biases[i].size(); ++j)
+			biases[i](j) = dist(gen);
+	}
 }
 
 VectorXd Network::feed_forward(VectorXd&& x)

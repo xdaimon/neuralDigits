@@ -13,14 +13,12 @@ int main()
 	VectorXi layer_sizes(1+2);
 	layer_sizes << dimensions, 30, num_classes;
 
-	std::srand(std::time(0));
-
 	Data train_data;
 	Data validation_data;
 	Data test_data;
 	load_data(train_data, test_data, validation_data);
 
 	Network net(layer_sizes);
-	double accuracy = net.SGD(validation_data, test_data, num_epochs, mini_batch_size, learning_rate);
+	double accuracy = net.SGD(train_data, test_data, num_epochs, mini_batch_size, learning_rate);
 	cout << "Accuracy: " << accuracy << endl;
 }
