@@ -3,9 +3,10 @@ using namespace NeuralNetwork;
 
 Network::Network(const VectorXi & layer_sizes)
 {
-	std::default_random_engine gen(13452);
+	std::default_random_engine gen(5336);
 	std::normal_distribution<double> dist(0.,1.);
 
+	// TODO initialize matricies with vector in order to use nicer c++ routines for initialization than the loops?
 	number_of_layers = layer_sizes.size();
 	for (int i = 1; i < number_of_layers; ++i)
 	{
@@ -38,8 +39,10 @@ double Network::SGD(const Data & train_data, const Data & test_data,
 	Data mini_batch;
 	mini_batch.examples = MatrixXd::Zero(dimension, mini_batch_size);
 	mini_batch.labels = VectorXi::Zero(mini_batch_size);
+
+	// fill random_indices with increasing numbers starting from 0
 	vector<int> random_indices(num_examples);
-	std::iota(random_indices.begin(), random_indices.end(), 0); // fill random_indices with increasing numbers starting from 0
+	int n = 0; std::generate(random_indices.begin(), random_indices.end(), [&n]{ return n++; });
 	for (int j = 0; j < epochs; ++j)
 	{
 		std::random_shuffle(random_indices.begin(), random_indices.end());

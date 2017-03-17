@@ -3,15 +3,15 @@
 #include <iostream>
 #include <limits>
 #include <ctime>
+#include <random>
+#include <numeric>
 
 #include <eigen3/Eigen/Eigen>
 using namespace Eigen;
 
 #include "Data.h"
+using namespace std;
 
-using std::vector;
-using std::cout;
-using std::endl;
 
 namespace NeuralNetwork
 {
