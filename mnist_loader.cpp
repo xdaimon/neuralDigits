@@ -12,7 +12,7 @@ using std::vector;
 
 // #include <png++/png.hpp>
 
-/*
+/* clang-format off
 TRAINING SET IMAGE FILE (train-images.idx3-ubyte):
 
 [offset] [type]          [value]          [description] 
@@ -36,10 +36,9 @@ TRAINING SET LABEL FILE (train-labels.idx1-ubyte):
 ........ 
 xxxx     unsigned byte   ??               label
 The labels values range from 0 to 9
- */
+ */ // clang-format on
 
-void load_data(Data& train_data, Data& test_data, Data& validation_data)
-{
+void load_data(Data& train_data, Data& test_data, Data& validation_data) {
 	const char* train_img_file = "train-images.idx3-ubyte";
 	const char* train_lbl_file = "train-labels.idx1-ubyte";
 	const char* test_img_file = "t10k-images.idx3-ubyte";
@@ -60,14 +59,14 @@ void load_data(Data& train_data, Data& test_data, Data& validation_data)
 
 	// Train/Validation Images
 	read_file(train_img_file, 16);
-	train_data.examples = MatrixXd::Zero(28*28, 50000);
-	validation_data.examples = MatrixXd::Zero(28*28, 10000);
+	train_data.examples = MatrixXd::Zero(28 * 28, 50000);
+	validation_data.examples = MatrixXd::Zero(28 * 28, 10000);
 	for (int i = 0; i < 50000; ++i)
-		for (int j = 0; j < 28*28; ++j)
-			train_data.examples(j, i) = file[j + i * 28*28]/256.;
+		for (int j = 0; j < 28 * 28; ++j)
+			train_data.examples(j, i) = file[j + i * 28 * 28] / 256.;
 	for (int i = 50000; i < 60000; ++i)
-		for (int j = 0; j < 28*28; ++j)
-			validation_data.examples(j, i-50000) = file[j + i * 28*28]/256.;
+		for (int j = 0; j < 28 * 28; ++j)
+			validation_data.examples(j, i - 50000) = file[j + i * 28 * 28] / 256.;
 
 	// Train/Validation Labels
 	read_file(train_lbl_file, 8);
@@ -76,14 +75,14 @@ void load_data(Data& train_data, Data& test_data, Data& validation_data)
 	for (int i = 0; i < 50000; ++i)
 		train_data.labels(i) = file[i];
 	for (int i = 50000; i < 60000; ++i)
-		validation_data.labels(i-50000) = file[i];
+		validation_data.labels(i - 50000) = file[i];
 
 	// Test Images
 	read_file(test_img_file, 16);
-	test_data.examples = MatrixXd::Zero(28*28, 10000);
+	test_data.examples = MatrixXd::Zero(28 * 28, 10000);
 	for (int i = 0; i < 10000; ++i)
-		for (int j = 0; j < 28*28; ++j)
-			test_data.examples(j, i) = file[j + i * 28*28]/256.;
+		for (int j = 0; j < 28 * 28; ++j)
+			test_data.examples(j, i) = file[j + i * 28 * 28] / 256.;
 
 	// Test labels
 	read_file(test_lbl_file, 8);
