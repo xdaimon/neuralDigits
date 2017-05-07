@@ -2,10 +2,11 @@
 using namespace NeuralNetwork;
 
 Network::Network(const VectorXi& layer_sizes) {
-	std::default_random_engine gen(5336);
+	std::default_random_engine gen(53360);
 	std::normal_distribution<double> dist(0., 1.);
 
-	// TODO initialize matricies with vector in order to use nicer c++ routines for initialization than the loops?
+	// TODO initialize matricies with vector in order to use nicer c++ routines for initialization
+	// than the loops?
 	number_of_layers = layer_sizes.size();
 	for (int i = 1; i < number_of_layers; ++i) {
 		weights.push_back(MatrixXd::Zero(layer_sizes(i), layer_sizes(i - 1)));
@@ -20,14 +21,14 @@ Network::Network(const VectorXi& layer_sizes) {
 	}
 }
 
-VectorXd Network::feed_forward(VectorXd&& x) {
+VectorXd Network::forward(VectorXd&& x) {
 	for (int i = 0; i < number_of_layers - 1; ++i)
-		x = sigmoid((weights[i] * x).eval() + biases[i]);
+		x = sigmoid(weights[i] * x + biases[i]);
 	return x;
 }
 
-double Network::SGD(const Data& train_data, const Data& test_data,
-                    int epochs, int mini_batch_size, double learning_rate) {
+double Network::SGD(const Data& train_data, const Data& test_data, int epochs, int mini_batch_size,
+                    double learning_rate) {
 	const int dimension = train_data.examples.rows();
 	const int num_examples = train_data.examples.cols();
 	const int num_batches = num_examples / mini_batch_size;
@@ -45,13 +46,13 @@ double Network::SGD(const Data& train_data, const Data& test_data,
 		for (int i = 0; i < num_batches; ++i) {
 			// Make a minibatch
 			for (int k = 0; k < mini_batch_size; ++k) {
-				mini_batch.examples.col(k) = train_data.examples.col(random_indices[k + mini_batch_size * i]);
+				mini_batch.examples.col(k) =
+				    train_data.examples.col(random_indices[k + mini_batch_size * i]);
 				mini_batch.labels(k) = train_data.labels(random_indices[k + mini_batch_size * i]);
 			}
 			train_for_mini_batch(mini_batch, learning_rate);
 		}
-		cout << "Epoch " << j << " : " << evaluate(test_data) << "% accuracy" << endl
-		     << endl;
+		cout << "Epoch " << j << " : " << evaluate(test_data) << "% accuracy" << endl << endl;
 	}
 	return evaluate(test_data);
 }
@@ -72,43 +73,31 @@ void Network::train_for_mini_batch(const Data& mini_batch, double learning_rate)
 	}
 }
 
-void Network::backprop(const VectorXd& x, int y, vector<MatrixXd>& nabla_w, vector<VectorXd>& nabla_b) {
+void Network::backprop(const VectorXd& x, int y, vector<MatrixXd>& nabla_w,
+                       vector<VectorXd>& nabla_b) {
 	vector<VectorXd> activations = {x};
-	for (int i = 1; i < number_of_layers; ++i)
-		activations.push_back(sigmoid(weights[i - 1] * activations[i - 1] + biases[i - 1]));
-	VectorXd delta = cost_derivative(activations[activations.size() - 1], y).array() * activations[activations.size() - 1].array() * (1.0 - activations[activations.size() - 1].array());
-	nabla_w[nabla_w.size() - 1] += delta * activations[activations.size() - 2].transpose();
-	nabla_b[nabla_b.size() - 1] += delta;
-	for (int l = 2; l < number_of_layers; ++l) {
-		delta = (weights[weights.size() - l + 1].transpose() * delta).eval().array() * activations[activations.size() - l].array() * (1.0 - activations[activations.size() - l].array());
-		nabla_w[nabla_w.size() - l] += delta * activations[activations.size() - l - 1].transpose();
-		nabla_b[nabla_b.size() - l] += delta;
+	int l = 0;
+	// forward pass
+	while (l < number_of_layers - 1) {
+		activations.push_back(sigmoid(weights[l] * activations[l] + biases[l]));
+		++l;
 	}
-	// VectorXd activation = x;
-	// vector<VectorXd> activations = {x};
-	// VectorXd z;
-	// vector<VectorXd> zs;
-	// for (int i = 0; i < number_of_layers-1; ++i)
-	// {
-	// 	z = (weights[i]*activation + biases[i]).eval();
-	// 	zs.push_back(z);
-	// 	activation = sigmoid(z);
-	// 	activations.push_back(activation);
-	// }
-	// VectorXd delta = cost_derivative(activations[activations.size()-1], y).array() * Dsigmoid(zs[zs.size()-1]).array();
-	// // VectorXd delta = cost_derivative(activations[activations.size()-1], y).array() * activations[activations.size()-1].array()*(1.0-activations[activations.size()-1].array());
-	// nabla_w[nabla_w.size() -1] += delta * activations[activations.size()-2].transpose();
-	// nabla_b[nabla_b.size() -1] += delta;
-	// VectorXd sp;
-	// for (int l = 2; l < number_of_layers; ++l)
-	// {
-	// 	// z = zs[zs.size()-l];
-	// 	// sp = Dsigmoid(z);
-	// 	sp = activations[activations.size()-l].array()*(1.0-activations[activations.size()-l].array());
-	// 	delta = ((weights[weights.size() -l+1].transpose() * delta).array()*sp.array()).eval();
-	// 	nabla_w[nabla_w.size() -l] += delta * activations[activations.size() -l-1].transpose();
-	// 	nabla_b[nabla_b.size() -l] += delta;
-	// }
+
+#define dsg(X) X.array() * (1.0 - X.array());
+
+	VectorXd delta = cost_derivative(activations[l], y).array() * dsg(activations[l]);
+	nabla_w[l - 1] += delta * activations[l - 1].transpose();
+	nabla_b[l - 1] += delta;
+
+	// -l+n+1
+	// backward pass
+	while (l > 1) {
+		delta = (weights[l - 1].transpose() * delta).eval().array() * dsg(activations[l - 1]);
+		nabla_w[l - 2] += delta * activations[l - 2].transpose();
+		nabla_b[l - 2] += delta;
+		--l;
+	}
+#undef dsg
 }
 
 double Network::evaluate(const Data& test_data) {
@@ -116,10 +105,10 @@ double Network::evaluate(const Data& test_data) {
 	vector<int> test_results(n);
 	int num_correctly_labeled = 0;
 	// This simplification makes the code slower.
-	// if (argmax(feed_forward(test_data.examples.col(i))) == test_data.labels(i))
+	// if (argmax(forward(test_data.examples.col(i))) == test_data.labels(i))
 	// 	num_correctly_labeled++;
 	for (int i = 0; i < n; ++i)
-		test_results[i] = argmax(feed_forward(test_data.examples.col(i)));
+		test_results[i] = argmax(forward(test_data.examples.col(i)));
 	for (int i = 0; i < n; ++i)
 		if (test_results[i] == test_data.labels(i))
 			num_correctly_labeled++;
@@ -149,9 +138,10 @@ VectorXd Network::Dsigmoid(const VectorXd& z) {
 	return sz.array() * (1.0 - sz.array());
 }
 
-//--- Code for converting module to work with matricies of train examples instead of just single vectors of examples
+//--- Code for converting module to work with matricies of train examples instead of just single
+//vectors of examples
 //--- search eigen partial reduction
-// VectorXd Network::feed_forward(MatrixXd&& X)
+// VectorXd Network::forward(MatrixXd&& X)
 // {
 // 	for (int i = 0; i < number_of_layers-1; ++i)
 // 		X = sigmoid((weights[i] * X).colwise() + biases[i]);
