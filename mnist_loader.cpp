@@ -39,10 +39,10 @@ The labels values range from 0 to 9
  */ // clang-format on
 
 void load_data(Data& train_data, Data& test_data, Data& validation_data) {
-	const char* train_img_file = "train-images.idx3-ubyte";
-	const char* train_lbl_file = "train-labels.idx1-ubyte";
-	const char* test_img_file = "t10k-images.idx3-ubyte";
-	const char* test_lbl_file = "t10k-labels.idx1-ubyte";
+	const char* train_img_file = "../train-images.idx3-ubyte";
+	const char* train_lbl_file = "../train-labels.idx1-ubyte";
+	const char* test_img_file = "../t10k-images.idx3-ubyte";
+	const char* test_lbl_file = "../t10k-labels.idx1-ubyte";
 
 	// train_data gets 50000 images from the first img file
 	// validation_data gets 10000 images from the first img file
