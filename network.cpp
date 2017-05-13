@@ -1,5 +1,9 @@
 #include "network.h"
+#include <thread>
+#include <functional>
 using namespace NeuralNetwork;
+
+#define THREADS 8
 
 Network::Network(const VectorXi& layerSizes) {
 	std::default_random_engine gen(53360);
@@ -32,9 +36,11 @@ double Network::SGD(const Data& train_data, const Data& test_data, int epochs, i
 	const int dimension = train_data.examples.rows();
 	const int num_examples = train_data.examples.cols();
 	const int num_batches = num_examples / mini_batch_size;
-	Data mini_batch;
-	mini_batch.examples = MatrixXd::Zero(dimension, mini_batch_size);
-	mini_batch.labels = VectorXi::Zero(mini_batch_size);
+	vector<Data> mini_batch(THREADS);
+	for (int i = 0; i < THREADS; ++i) {
+		mini_batch[i].examples = MatrixXd::Zero(dimension, mini_batch_size);
+		mini_batch[i].labels = VectorXi::Zero(mini_batch_size);
+	}
 
 	// fill random_indices with increasing numbers starting from 0
 	vector<int> random_indices(num_examples);
@@ -43,12 +49,15 @@ double Network::SGD(const Data& train_data, const Data& test_data, int epochs, i
 
 	for (int j = 0; j < epochs; ++j) {
 		std::random_shuffle(random_indices.begin(), random_indices.end());
-		for (int i = 0; i < num_batches; ++i) {
-			// Make a minibatch
-			for (int k = 0; k < mini_batch_size; ++k) {
-				mini_batch.examples.col(k) =
-				    train_data.examples.col(random_indices[k + mini_batch_size * i]);
-				mini_batch.labels(k) = train_data.labels(random_indices[k + mini_batch_size * i]);
+		int i = 0;
+		while (i < num_batches-THREADS) {
+			for (int l = 0; l < THREADS; ++l) {
+				// Make a minibatch
+				for (int k = 0; k < mini_batch_size; ++k) {
+					mini_batch[l].examples.col(k) = train_data.examples.col(random_indices[k + mini_batch_size * i]);
+					mini_batch[l].labels(k) = train_data.labels(random_indices[k + mini_batch_size * i]);
+				}
+				++i;
 			}
 			train_for_mini_batch(mini_batch, learning_rate);
 		}
@@ -57,23 +66,33 @@ double Network::SGD(const Data& train_data, const Data& test_data, int epochs, i
 	return evaluate(test_data);
 }
 
-void Network::train_for_mini_batch(const Data& mini_batch, double learning_rate) {
-	vector<MatrixXd> dW(numLayers - 1);
-	vector<VectorXd> dB(numLayers - 1);
-	for (int i = 0; i < numLayers - 1; ++i) {
-		dW[i] = MatrixXd::Zero(W[i].rows(), W[i].cols());
-		dB[i] = VectorXd::Zero(B[i].rows());
+void Network::train_for_mini_batch(vector<Data>& mini_batch, double learning_rate) {
+	vector<vector<MatrixXd> > dW(THREADS); // mini_batch.size()
+	vector<vector<VectorXd> > dB(THREADS);
+	for (int j = 0; j < THREADS; ++j) {
+		for (int i = 0; i < numLayers - 1; ++i) {
+			dW[j].push_back(MatrixXd::Zero(W[i].rows(), W[i].cols()));
+			dB[j].push_back(VectorXd::Zero(B[i].rows()));
+		}
 	}
-	backprop(mini_batch.examples, mini_batch.labels, dW, dB);
-	const int mini_batch_size = mini_batch.labels.rows();
-	for (int i = 0; i < numLayers - 1; ++i) {
-		W[i] -= (learning_rate * (dW[i] / double(mini_batch_size)));
-		B[i] -= (learning_rate * (dB[i] / double(mini_batch_size)));
+
+	vector<std::thread> ts(THREADS);
+	for (int i = 0; i < THREADS; ++i) {
+		ts[i] = std::thread(&Network::backprop, this, std::ref(mini_batch[i].examples),std::ref(mini_batch[i].labels),std::ref(dW[i]),std::ref(dB[i]));
+	}
+	for (int i = 0; i < THREADS; ++i)
+		ts[i].join();
+
+	const int mini_batch_size = mini_batch[0].labels.rows();
+	for (int j = 0; j < THREADS; ++j) {
+		for (int i = 0; i < numLayers - 1; ++i) {
+			W[i] -= (learning_rate * (dW[j][i] / double(mini_batch_size)));
+			B[i] -= (learning_rate * (dB[j][i] / double(mini_batch_size)));
+		}
 	}
 }
 
-void Network::backprop(const MatrixXd& X, const VectorXi Y, vector<MatrixXd>& dW,
-                       vector<VectorXd>& dB) {
+void Network::backprop(MatrixXd& X, VectorXi& Y, vector<MatrixXd>& dW, vector<VectorXd>& dB) {
 	int l = 0;
 	vector<MatrixXd> A = {X};
 	while (l < numLayers - 1) {
@@ -85,7 +104,7 @@ void Network::backprop(const MatrixXd& X, const VectorXi Y, vector<MatrixXd>& dW
 	dW[l-1] += d_l * A[l-1].transpose();
 	for (int i = 0; i < d_l.cols(); ++i)
 		dB[l-1] += d_l.col(i);
-	l--;
+	--l;
 
 	while (l >= 1) {
 		d_l = (W[l].transpose() * d_l).eval().array() * sigmoid_derivative(A[l]).array();

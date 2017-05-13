@@ -28,8 +28,8 @@ class Network {
 	vector<VectorXd> B;
 
 	MatrixXd forward(MatrixXd X);
-	void train_for_mini_batch(const Data& mini_batch, double learning_rate);
-	void backprop(const MatrixXd& x, const VectorXi Y, vector<MatrixXd>& dW, vector<VectorXd>& dB);
+	void train_for_mini_batch(vector<Data>& mini_batch, double learning_rate);
+	void backprop(MatrixXd& X, VectorXi& Y, vector<MatrixXd>& dW, vector<VectorXd>& dB);
 	MatrixXd Cost_derivative(MatrixXd A_L, const VectorXi Y);
 
 	MatrixXd sigmoid(const MatrixXd& z);

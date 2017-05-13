@@ -10,5 +10,5 @@ include_directories(.)
 add_executable(main ${SOURCE_FILES})
 
 LINK_DIRECTORIES(/usr/lib/x86_64-linux-gnu/ /usr/include/libpng12)
-TARGET_LINK_LIBRARIES(main png12)
+TARGET_LINK_LIBRARIES(main png12 pthread)
 
