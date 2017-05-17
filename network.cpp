@@ -1,9 +1,6 @@
 #include "network.h"
 #include <thread>
-#include <functional>
 using namespace NeuralNetwork;
-
-#define THREADS 8
 
 Network::Network(const VectorXi& layerSizes) {
 	std::default_random_engine gen(53360);
@@ -19,7 +16,7 @@ Network::Network(const VectorXi& layerSizes) {
 	for (int i = 0; i < numLayers - 1; ++i) {
 		for (int j = 0; j < W[i].rows(); ++j)
 			for (int k = 0; k < W[i].cols(); ++k)
-				W[i](j, k) = dist(gen);
+				W[i](j, k) = dist(gen)/sqrt(W[i].cols());
 		for (int j = 0; j < B[i].rows(); ++j)
 			B[i](j) = dist(gen);
 	}
@@ -32,14 +29,14 @@ MatrixXd Network::forward(MatrixXd X) {
 }
 
 double Network::SGD(const Data& train_data, const Data& test_data, int epochs, int mini_batch_size,
-                    double learning_rate) {
+                    double learning_rate, double regularization, int threads) {
 	const int dimension = train_data.examples.rows();
 	const int num_examples = train_data.examples.cols();
-	const int num_batches = num_examples / mini_batch_size;
-	vector<Data> mini_batch(THREADS);
-	for (int i = 0; i < THREADS; ++i) {
-		mini_batch[i].examples = MatrixXd::Zero(dimension, mini_batch_size);
-		mini_batch[i].labels = VectorXi::Zero(mini_batch_size);
+	const int num_batches = num_examples/mini_batch_size;
+	vector<Data> mini_batch(threads);
+	for (int t = 0; t < threads; ++t) {
+		mini_batch[t].examples = MatrixXd::Zero(dimension, mini_batch_size/threads);
+		mini_batch[t].labels = VectorXi::Zero(mini_batch_size/threads);
 	}
 
 	// fill random_indices with increasing numbers starting from 0
@@ -47,48 +44,49 @@ double Network::SGD(const Data& train_data, const Data& test_data, int epochs, i
 	int n = 0;
 	std::generate(random_indices.begin(), random_indices.end(), [&n] { return n++; });
 
+
 	for (int j = 0; j < epochs; ++j) {
+		auto prev_time = std::chrono::steady_clock::now();
 		std::random_shuffle(random_indices.begin(), random_indices.end());
-		int i = 0;
-		while (i < num_batches-THREADS) {
-			for (int l = 0; l < THREADS; ++l) {
-				// Make a minibatch
-				for (int k = 0; k < mini_batch_size; ++k) {
-					mini_batch[l].examples.col(k) = train_data.examples.col(random_indices[k + mini_batch_size * i]);
-					mini_batch[l].labels(k) = train_data.labels(random_indices[k + mini_batch_size * i]);
+		for (int i = 0; i < num_batches; ++i) {
+			// Make a minibatch, each thread processes part of the minibatch
+			for (int t = 0; t < threads; ++t) {
+				for (int k = 0; k < mini_batch_size/threads; ++k) {
+					mini_batch[t].examples.col(k) = train_data.examples.col(random_indices[k + mini_batch_size * i + mini_batch_size/threads*t]);
+					mini_batch[t].labels(k) = train_data.labels(random_indices[k + mini_batch_size * i + mini_batch_size/threads*t]);
 				}
-				++i;
 			}
-			train_for_mini_batch(mini_batch, learning_rate);
+			train_for_mini_batch(mini_batch, mini_batch_size, learning_rate, regularization, threads);
 		}
-		cout << "Epoch " << j << " : " << evaluate(test_data) << "% accuracy" << endl << endl;
+		// cout << j<<"\t"<<evaluate(test_data) << "% \t accuracy ";
+		cout << (std::chrono::steady_clock::now() - prev_time).count()/10000 << endl;
 	}
 	return evaluate(test_data);
 }
 
-void Network::train_for_mini_batch(vector<Data>& mini_batch, double learning_rate) {
-	vector<vector<MatrixXd> > dW(THREADS); // mini_batch.size()
-	vector<vector<VectorXd> > dB(THREADS);
-	for (int j = 0; j < THREADS; ++j) {
-		for (int i = 0; i < numLayers - 1; ++i) {
-			dW[j].push_back(MatrixXd::Zero(W[i].rows(), W[i].cols()));
-			dB[j].push_back(VectorXd::Zero(B[i].rows()));
+void Network::train_for_mini_batch(vector<Data>& mini_batch, int mini_batch_size, double learning_rate, double regularization, int threads) {
+	vector<vector<MatrixXd> > dW(threads); // mini_batch.size()
+	vector<vector<VectorXd> > dB(threads);
+	for (int t = 0; t < threads; ++t) {
+		for (int l = 0; l < numLayers - 1; ++l) {
+			dW[t].push_back(MatrixXd::Zero(W[l].rows(), W[l].cols()));
+			dB[t].push_back(VectorXd::Zero(B[l].rows()));
 		}
 	}
 
-	vector<std::thread> ts(THREADS);
-	for (int i = 0; i < THREADS; ++i) {
-		ts[i] = std::thread(&Network::backprop, this, std::ref(mini_batch[i].examples),std::ref(mini_batch[i].labels),std::ref(dW[i]),std::ref(dB[i]));
+	vector<std::thread> ts(threads);
+	for (int t = 0; t < threads; ++t) {
+		ts[t] = std::thread(&Network::backprop, this, std::ref(mini_batch[t].examples),std::ref(mini_batch[t].labels),std::ref(dW[t]),std::ref(dB[t]));
 	}
-	for (int i = 0; i < THREADS; ++i)
-		ts[i].join();
+	for (int t = 0; t < threads; ++t)
+		ts[t].join();
 
-	const int mini_batch_size = mini_batch[0].labels.rows();
-	for (int j = 0; j < THREADS; ++j) {
-		for (int i = 0; i < numLayers - 1; ++i) {
-			W[i] -= (learning_rate * (dW[j][i] / double(mini_batch_size)));
-			B[i] -= (learning_rate * (dB[j][i] / double(mini_batch_size)));
+	for (int l = 0; l < numLayers - 1; ++l) {
+		for (int t = 0; t < threads; ++t) {
+			W[l] -= learning_rate/double(mini_batch_size) * dW[t][l];
+			B[l] -= learning_rate/double(mini_batch_size) * dB[t][l];
 		}
+		W[l] -= regularization * W[l];
 	}
 }
 
