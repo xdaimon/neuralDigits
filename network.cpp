@@ -16,13 +16,15 @@ Network::Network(VectorXi& layerSizes) {
 		B.push_back(VectorXd::Zero(layerSizes(i)));
 	}
 
-	for (int i = 0; i < numLayers - 1; ++i) {
-		for (int j = 0; j < W[i].rows(); ++j)
-			for (int k = 0; k < W[i].cols(); ++k)
-				W[i](j, k) = dist(rand_engine)/sqrt(W[i].cols()); // initialize so that on average the size of input to neurons is not too large
-		for (int j = 0; j < B[i].rows(); ++j)
-			B[i](j) = dist(rand_engine);
-	}
+	// To compare to tensorflow do not init with random nums
+
+	// for (int i = 0; i < numLayers - 1; ++i) {
+	// 	for (int j = 0; j < W[i].rows(); ++j)
+	// 		for (int k = 0; k < W[i].cols(); ++k)
+	// 			W[i](j, k) = dist(rand_engine)/sqrt(W[i].cols()); // initialize so that on average the size of input to neurons is not too large
+	// 	for (int j = 0; j < B[i].rows(); ++j)
+	// 		B[i](j) = dist(rand_engine);
+	// }
 }
 
 MatrixXd Network::forward(MatrixXd X) {
@@ -49,8 +51,8 @@ double Network::SGD(const Data& train_data, const Data& test_data, int epochs, i
 		for (int l = 0; l < numLayers - 1; ++l) {
 			dW[t].push_back(MatrixXd::Zero(W[l].rows(), W[l].cols()));
 			dB[t].push_back(VectorXd::Zero(B[l].rows()));
-			bdW[t].push_back(MatrixXd::Zero(W[l].rows(), W[l].cols()));
-			bdB[t].push_back(VectorXd::Zero(B[l].rows()));
+			// bdW[t].push_back(MatrixXd::Zero(W[l].rows(), W[l].cols()));
+			// bdB[t].push_back(VectorXd::Zero(B[l].rows()));
 		}
 	}
 
@@ -62,7 +64,7 @@ double Network::SGD(const Data& train_data, const Data& test_data, int epochs, i
 	vector<double> accuracies;
 
 	for (int j = 0; j < epochs; ++j) {
-		auto prev_time = std::chrono::steady_clock::now();
+		// auto prev_time = std::chrono::steady_clock::now();
 		// shuffle to avoid biasing the training examples
 		std::shuffle(random_indices.begin(), random_indices.end(), rand_engine);
 		for (int i = 0; i < num_batches; ++i) {
@@ -75,7 +77,7 @@ double Network::SGD(const Data& train_data, const Data& test_data, int epochs, i
 			}
 			train_for_mini_batch(mini_batch, mini_batch_size, learning_rate, regularization, momentum, threads, dW, dB, bdW, bdB);
 		}
-		accuracies.push_back(evaluate(test_data));
+		// accuracies.push_back(evaluate(test_data));
 
 		// static int last = 0;
 		// if (j >last+ 10) {
@@ -88,8 +90,8 @@ double Network::SGD(const Data& train_data, const Data& test_data, int epochs, i
 		// }
 		// cout << learning_rate << "\t" << j <<"\t"<< accuracies.back() << "% \t accuracy ";
 
-		cout << j <<"\t"<< accuracies.back() << "% \t accuracy ";
-		cout << (std::chrono::steady_clock::now() - prev_time).count()/10000 << endl;
+		// cout << j <<"\t"<< accuracies.back() << "% \t accuracy ";
+		// cout << (std::chrono::steady_clock::now() - prev_time).count()/10000 << endl;
 	}
 
 	return evaluate(test_data);
@@ -116,16 +118,21 @@ void Network::train_for_mini_batch(vector<Data>& mini_batch, int mini_batch_size
 	const double db = .4;
 	for (int l = 0; l < numLayers - 1; ++l) {
 		for (int t = 0; t < threads; ++t) {
-			MatrixXd tempW = prev_dW[t][l];
-			MatrixXd tempB = prev_dB[t][l];
-			prev_dW[t][l]=((prev_dW[t][l] + bprev_dW[t][l])*(1-momentum) + learning_rate/double(mini_batch_size)*dW[t][l]*momentum).eval();
-			prev_dB[t][l]=((prev_dB[t][l] + bprev_dB[t][l])*(1-momentum) + learning_rate/double(mini_batch_size)*dB[t][l]*momentum).eval();
-			bprev_dW[t][l] =( (prev_dW[t][l]-tempW)*(1.-db) + bprev_dW[t][l]*db).eval();
-			bprev_dB[t][l] =( (prev_dB[t][l]-tempB)*(1.-db) + bprev_dB[t][l]*db).eval();
-			W[l] -= prev_dW[t][l];
-			B[l] -= prev_dB[t][l];
+			// Turn off momentum
+			// MatrixXd tempW = prev_dW[t][l];
+			// MatrixXd tempB = prev_dB[t][l];
+			// prev_dW[t][l]=((prev_dW[t][l] + bprev_dW[t][l])*(1-momentum) + learning_rate/double(mini_batch_size)*dW[t][l]*momentum).eval();
+			// prev_dB[t][l]=((prev_dB[t][l] + bprev_dB[t][l])*(1-momentum) + learning_rate/double(mini_batch_size)*dB[t][l]*momentum).eval();
+			// bprev_dW[t][l] =( (prev_dW[t][l]-tempW)*(1.-db) + bprev_dW[t][l]*db).eval();
+			// bprev_dB[t][l] =( (prev_dB[t][l]-tempB)*(1.-db) + bprev_dB[t][l]*db).eval();
+			// W[l] -= prev_dW[t][l];
+			// B[l] -= prev_dB[t][l];
+
+			W[l] -= learning_rate/double(mini_batch_size) * dW[t][l];
+			B[l] -= learning_rate/double(mini_batch_size) * dB[t][l];
 		}
-		W[l] -= regularization * W[l];
+		// Turn off regularization
+		// W[l] -= regularization * W[l];
 	}
 
 	// for (int l = 0; l < numLayers - 1; ++l) {
