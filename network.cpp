@@ -258,5 +258,5 @@ MatrixXd Network::relu(const MatrixXd& z) {
 }
 
 MatrixXd Network::relu_derivative(const MatrixXd& activations) {
-	return activations.array()/(activations.array()+0.0000001);
+	return activations.unaryExpr([](const double& x) { return double(x >= 0.); });
 }
